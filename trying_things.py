@@ -30,12 +30,26 @@ class Ball:
         self.x_vel = x_vel
         self.y_vel = y_vel
 
-    def move(self):
-        if (self.y + self.RADIUS) >= HEIGHT:
+    def move(self, air_resistance=False):
+        # check collisons with walls/floor
+        # should put into own method
+        if self.y + self.RADIUS + self.y_vel >= HEIGHT:
+            self.y = HEIGHT - self.RADIUS
             self.y_vel = -self.y_vel
+        if self.x + self.RADIUS + self.x_vel >= WIDTH:
+            self.x = WIDTH - self.RADIUS
+            self.x_vel = -self.x_vel
+        if self.x - self.RADIUS + self.x_vel <= 0:
+            self.x = self.RADIUS
+            self.x_vel = -self.x_vel
+
         self.x += self.x_vel
         self.y += self.y_vel
         self.y_vel += GRAVITY
+
+        if air_resistance:
+            self.x_vel = 0.999 * self.x_vel
+            self.y_vel = 0.999 * self.y_vel
 
     def draw(self, win):
         pygame.draw.circle(win, self.color, (self.x, self.y), self.RADIUS)
@@ -53,7 +67,11 @@ def main():
     clock = pygame.time.Clock()
     font = pygame.font.Font("freesansbold.ttf", 32)
 
-    items = [Ball(WIDTH / 2, HEIGHT / 2, "darkblue")]
+    items = [
+        Ball(WIDTH / 4, HEIGHT / 4, "darkblue", x_vel=10),
+        Ball(WIDTH / 2, HEIGHT / 2, "red", x_vel=-10, y_vel=15),
+        Ball(WIDTH * 3 / 4, HEIGHT * 3 / 4, "darkgreen"),
+    ]
     while run:
         clock.tick(FPS)
 
@@ -63,9 +81,13 @@ def main():
                 break
 
         # place rest of game code to run each tick in loop
-        ball = items[0]
-        kinetic_energy = 0.5 * ball.y_vel**2
-        potential_energy = GRAVITY * (HEIGHT - ball.y)
+        balls = [item for item in items if isinstance(item, Ball)]
+        ball_vels = np.array(
+            [np.sqrt(ball.x_vel**2 + ball.y_vel**2) for ball in balls]
+        )
+        kinetic_energy = np.sum(0.5 * ball_vels**2)
+        ball_heights = np.array([(HEIGHT - ball.y) for ball in balls])
+        potential_energy = np.sum(GRAVITY * ball_heights)
         vel_text = font.render(
             f"total energy = {kinetic_energy + potential_energy:.2f}",
             True,
