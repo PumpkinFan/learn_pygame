@@ -3,12 +3,15 @@ import numpy as np
 
 pygame.init()
 
+# TODO: implement proper 2D collision (https://www.vobarian.com/collisions/2dcollisions2.pdf)
+
 WIDTH, HEIGHT = 1600, 900
 
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("gaming")
+pygame.display.set_caption("ballz")
 
 FPS = 60
+DT = 1 / 5
 
 COLORS = [
     # rgb color values
@@ -30,9 +33,11 @@ class Ball:
         self.x_vel = x_vel
         self.y_vel = y_vel
 
-    def move(self, air_resistance=False):
-        # check collisons with walls/floor
-        # should put into own method
+    def check_wall_collisions(self):
+        current_x = self.x
+        current_y = self.y
+        next_x = self.x + self.x_vel * DT
+        next_y = self.y + self.y_vel * DT
         if self.y + self.RADIUS + self.y_vel >= HEIGHT:
             self.y = HEIGHT - self.RADIUS
             self.y_vel = -self.y_vel
@@ -43,8 +48,11 @@ class Ball:
             self.x = self.RADIUS
             self.x_vel = -self.x_vel
 
-        self.x += self.x_vel
-        self.y += self.y_vel
+    def move(self, air_resistance=False):
+        self.check_wall_collisions()
+
+        self.x += self.x_vel * DT
+        self.y += self.y_vel * DT
         self.y_vel += GRAVITY
 
         if air_resistance:
@@ -53,6 +61,18 @@ class Ball:
 
     def draw(self, win):
         pygame.draw.circle(win, self.color, (self.x, self.y), self.RADIUS)
+
+
+def check_ball_collisions(balls: list[Ball]):
+    for ball1 in balls:
+        for ball2 in balls:
+            if ball1 == ball2:
+                pass
+            dist = np.sqrt((ball1.x - ball2.x) ** 2 + (ball1.y - ball2.y) ** 2)
+            if dist < ball1.RADIUS + ball2.RADIUS:
+                ball1.x_vel, ball2.x_vel = ball2.x_vel, ball1.x_vel
+                ball1.y_vel, ball2.y_vel = ball2.y_vel, ball1.y_vel
+                break
 
 
 def draw(items):
@@ -67,8 +87,8 @@ def main():
     clock = pygame.time.Clock()
     font = pygame.font.Font("freesansbold.ttf", 32)
 
-    items = [
-        Ball(WIDTH / 4, HEIGHT / 4, "darkblue", x_vel=10),
+    balls = [
+        Ball(WIDTH / 4, HEIGHT / 4, "darkblue", x_vel=100),
         Ball(WIDTH / 2, HEIGHT / 2, "red", x_vel=-10, y_vel=15),
         Ball(WIDTH * 3 / 4, HEIGHT * 3 / 4, "darkgreen"),
     ]
@@ -81,7 +101,6 @@ def main():
                 break
 
         # place rest of game code to run each tick in loop
-        balls = [item for item in items if isinstance(item, Ball)]
         ball_vels = np.array(
             [np.sqrt(ball.x_vel**2 + ball.y_vel**2) for ball in balls]
         )
@@ -100,9 +119,11 @@ def main():
         WIN.fill("white")
         WIN.blit(vel_text, text_rect)
 
-        draw(items)
-        for item in items:
-            item.move()
+        draw(balls)
+        for ball in balls:
+            ball.move()
+
+        check_ball_collisions(balls)
 
     pygame.quit()
     quit()
