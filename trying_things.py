@@ -4,7 +4,6 @@ import numpy as np
 
 pygame.init()
 
-# TODO: implement proper 2D collision (https://www.vobarian.com/collisions/2dcollisions2.pdf)
 
 WIDTH, HEIGHT = 1600, 900
 
@@ -12,7 +11,7 @@ WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("ballz")
 
 FPS = 60
-DT = 1  # in 1/FPS of a seconcd
+DT = 0.25
 
 COLORS = [
     # rgb color values
@@ -21,7 +20,7 @@ COLORS = [
     (0, 0, 255),
 ]
 
-GRAVITY = 0.1
+GRAVITY = 0.8
 
 
 class Ball:
@@ -40,16 +39,16 @@ class Ball:
         current_y = self.y
         next_x = self.x + self.x_vel * DT
         next_y = self.y + self.y_vel * DT
-        if self.y - self.RADIUS + self.y_vel <= 0:
+        if next_y - self.RADIUS <= 0:
             self.y = self.RADIUS
             self.y_vel = -self.y_vel
-        if self.y + self.RADIUS + self.y_vel >= HEIGHT:
+        if next_y + self.RADIUS >= HEIGHT:
             self.y = HEIGHT - self.RADIUS
             self.y_vel = -self.y_vel
-        if self.x - self.RADIUS + self.x_vel <= 0:
+        if next_x - self.RADIUS <= 0:
             self.x = self.RADIUS
             self.x_vel = -self.x_vel
-        if self.x + self.RADIUS + self.x_vel >= WIDTH:
+        if next_x + self.RADIUS >= WIDTH:
             self.x = WIDTH - self.RADIUS
             self.x_vel = -self.x_vel
 
@@ -58,7 +57,7 @@ class Ball:
 
         self.x += self.x_vel * DT
         self.y += self.y_vel * DT
-        self.y_vel += GRAVITY
+        self.y_vel += GRAVITY * DT
 
         if air_resistance:
             self.x_vel = 0.999 * self.x_vel
@@ -99,6 +98,7 @@ def collide_balls(ball1: Ball, ball2: Ball):
 
 
 def check_ball_collisions(balls: list[Ball]):
+    # iterate over all combinations of balls
     for ball1 in balls:
         for ball2 in balls:
             if ball1 == ball2:
@@ -123,8 +123,8 @@ def main():
     balls = [
         Ball(WIDTH / 4, 100, "green", x_vel=10, y_vel=2),
         Ball(WIDTH * 3 / 4, 100, "green", x_vel=-10, y_vel=-2),
-        Ball(WIDTH / 4, 500, "blue", x_vel=10),
-        Ball(WIDTH * 3 / 4, 500, "blue", x_vel=-10),
+        Ball(WIDTH / 4, 500, "blue", x_vel=10, mass=10),
+        Ball(WIDTH * 3 / 4, 500, "blue", x_vel=-10, mass=10),
     ]
     while run:
         clock.tick(FPS)
@@ -142,7 +142,7 @@ def main():
         ball_heights = np.array([(HEIGHT - ball.y) for ball in balls])
         potential_energy = np.sum(GRAVITY * ball_heights)
         vel_text = font.render(
-            f"total energy = {kinetic_energy + potential_energy:.2f}",
+            f"total energy = {kinetic_energy + potential_energy:.2f}, kinetic energy = {kinetic_energy:.2f}, potential energy = {potential_energy:.2f}",
             True,
             "black",
             "white",
