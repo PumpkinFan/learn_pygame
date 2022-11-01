@@ -11,7 +11,7 @@ WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("ballz")
 
 FPS = 60
-DT = 0.5
+DT = 1
 
 # TODO: Linear interpolation of collisions
 # TODO: Use RK4 for time stepping
@@ -23,7 +23,7 @@ COLORS = [
     (0, 0, 255),
 ]
 
-GRAVITY = 0.5
+GRAVITY = 0
 
 
 class Ball:
@@ -38,6 +38,14 @@ class Ball:
         self.mass = mass
         # self.next_x = self.x + self.x_vel * DT
         # self.next_y = self.y + self.y_vel * DT
+
+    @property
+    def next_x(self):
+        return self.x + self.x_vel * DT
+
+    @property
+    def next_y(self):
+        return self.y + self.y_vel * DT
 
     def check_wall_collisions(self):
         if self.y - self.RADIUS <= 0:
@@ -66,6 +74,9 @@ class Ball:
 
     def draw(self, win):
         pygame.draw.circle(win, self.color, (self.x, self.y), self.RADIUS)
+
+        # draw "hitboxes"
+        # pygame.draw.circle(WIN, "yellow", (self.next_x, self.next_y), self.RADIUS)
 
 
 def collide_balls(ball1: Ball, ball2: Ball):
@@ -104,7 +115,10 @@ def check_ball_collisions(balls: list[Ball]):
         for ball2 in balls:
             if ball1 == ball2:
                 break
-            dist = np.sqrt((ball1.x - ball2.x) ** 2 + (ball1.y - ball2.y) ** 2)
+            # dist = np.sqrt((ball1.x - ball2.x) ** 2 + (ball1.y - ball2.y) ** 2)
+            dist = np.sqrt(
+                (ball1.next_x - ball2.next_x) ** 2 + (ball1.next_y - ball2.next_y) ** 2
+            )
             if dist < ball1.RADIUS + ball2.RADIUS:
                 collide_balls(ball1, ball2)
 
@@ -132,7 +146,7 @@ def make_lots_of_balls(sqrt_n_balls):
             random.choice(COLORS),
             x_vel=np.random.randint(-5, 5),
             y_vel=np.random.randint(-5, 5),
-            mass=np.random.randint(1, 3),
+            mass=random.choice([1, 10]),
         )
         for x, y in zip(x_mgrid.ravel(), y_mgrid.ravel())
     ]
@@ -145,10 +159,14 @@ def main():
     font = pygame.font.Font("freesansbold.ttf", 32)
 
     # balls = [
-    #     Ball(WIDTH / 4, HEIGHT / 2, x_vel=50),
-    #     Ball(3 * WIDTH / 4, HEIGHT / 2, x_vel=-50),
+    #     Ball(WIDTH / 2, HEIGHT / 2, x_vel=25),
+    #     Ball(3 * WIDTH / 4 + 3, HEIGHT / 2, x_vel=-25),
     # ]
     balls = make_lots_of_balls(9)
+    for ball in balls:
+        redness = 255 * ball.mass / 10
+        blueness = 255 * (1 - ball.mass / 10)
+        ball.color = (int(redness), 0, int(blueness))
 
     while run:
         clock.tick(FPS)
@@ -178,11 +196,10 @@ def main():
         WIN.fill("white")
         WIN.blit(vel_text, text_rect)
 
-        draw(balls)
+        check_ball_collisions(balls)
         for ball in balls:
             ball.move()
-
-        check_ball_collisions(balls)
+        draw(balls)
 
     pygame.quit()
     quit()
