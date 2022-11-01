@@ -1,6 +1,6 @@
-from re import I
 import pygame
 import numpy as np
+import random
 
 pygame.init()
 
@@ -11,7 +11,10 @@ WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("ballz")
 
 FPS = 60
-DT = 0.25
+DT = 0.5
+
+# TODO: Linear interpolation of collisions
+# TODO: Use RK4 for time stepping
 
 COLORS = [
     # rgb color values
@@ -20,35 +23,33 @@ COLORS = [
     (0, 0, 255),
 ]
 
-GRAVITY = 0.8
+GRAVITY = 0.5
 
 
 class Ball:
-    RADIUS = 50
+    RADIUS = 25
 
-    def __init__(self, x, y, color, x_vel=0, y_vel=0, mass=1):
+    def __init__(self, x, y, color="red", x_vel=0, y_vel=0, mass=1):
         self.x = x
         self.y = y
         self.color = color
         self.x_vel = x_vel
         self.y_vel = y_vel
         self.mass = mass
+        # self.next_x = self.x + self.x_vel * DT
+        # self.next_y = self.y + self.y_vel * DT
 
     def check_wall_collisions(self):
-        current_x = self.x
-        current_y = self.y
-        next_x = self.x + self.x_vel * DT
-        next_y = self.y + self.y_vel * DT
-        if next_y - self.RADIUS <= 0:
+        if self.y - self.RADIUS <= 0:
             self.y = self.RADIUS
             self.y_vel = -self.y_vel
-        if next_y + self.RADIUS >= HEIGHT:
+        if self.y + self.RADIUS >= HEIGHT:
             self.y = HEIGHT - self.RADIUS
             self.y_vel = -self.y_vel
-        if next_x - self.RADIUS <= 0:
+        if self.x - self.RADIUS <= 0:
             self.x = self.RADIUS
             self.x_vel = -self.x_vel
-        if next_x + self.RADIUS >= WIDTH:
+        if self.x + self.RADIUS >= WIDTH:
             self.x = WIDTH - self.RADIUS
             self.x_vel = -self.x_vel
 
@@ -74,7 +75,7 @@ def collide_balls(ball1: Ball, ball2: Ball):
     norm_vector = np.array([ball2.x - ball1.x, ball2.y - ball1.y])
     # linalg.norm = magnitude of vector
     unit_norm = norm_vector / np.linalg.norm(norm_vector)
-    unit_tang = np.array([-unit_norm[1], unit_norm[0]])  # ut = <-un_y, un_x>
+    unit_tang = np.array([-unit_norm[1], unit_norm[0]])
 
     # project initial vectors onto normal and tangent lines
     norm_scalar1 = np.dot(vel1, unit_norm)
@@ -115,17 +116,40 @@ def draw(items):
     pygame.display.update()
 
 
+def make_lots_of_balls(sqrt_n_balls):
+    sqrt_n_balls
+    x_grid = np.linspace(
+        WIDTH / sqrt_n_balls, WIDTH - WIDTH / sqrt_n_balls, sqrt_n_balls
+    )
+    y_grid = np.linspace(
+        HEIGHT / sqrt_n_balls, HEIGHT - HEIGHT / sqrt_n_balls, sqrt_n_balls
+    )
+    x_mgrid, y_mgrid = np.meshgrid(x_grid, y_grid)
+    balls = [
+        Ball(
+            x,
+            y,
+            random.choice(COLORS),
+            x_vel=np.random.randint(-5, 5),
+            y_vel=np.random.randint(-5, 5),
+            mass=np.random.randint(1, 3),
+        )
+        for x, y in zip(x_mgrid.ravel(), y_mgrid.ravel())
+    ]
+    return balls
+
+
 def main():
     run = True
     clock = pygame.time.Clock()
     font = pygame.font.Font("freesansbold.ttf", 32)
 
-    balls = [
-        Ball(WIDTH / 4, 100, "green", x_vel=10, y_vel=2),
-        Ball(WIDTH * 3 / 4, 100, "green", x_vel=-10, y_vel=-2),
-        Ball(WIDTH / 4, 500, "blue", x_vel=10, mass=10),
-        Ball(WIDTH * 3 / 4, 500, "blue", x_vel=-10, mass=10),
-    ]
+    # balls = [
+    #     Ball(WIDTH / 4, HEIGHT / 2, x_vel=50),
+    #     Ball(3 * WIDTH / 4, HEIGHT / 2, x_vel=-50),
+    # ]
+    balls = make_lots_of_balls(9)
+
     while run:
         clock.tick(FPS)
 
@@ -138,11 +162,12 @@ def main():
         ball_vels = np.array(
             [np.sqrt(ball.x_vel**2 + ball.y_vel**2) for ball in balls]
         )
-        kinetic_energy = np.sum(0.5 * ball_vels**2)
+        ball_masses = np.array([ball.mass for ball in balls])
+        kinetic_energy = np.sum(0.5 * ball_masses * ball_vels**2)
         ball_heights = np.array([(HEIGHT - ball.y) for ball in balls])
-        potential_energy = np.sum(GRAVITY * ball_heights)
+        potential_energy = np.sum(ball_masses * GRAVITY * ball_heights)
         vel_text = font.render(
-            f"total energy = {kinetic_energy + potential_energy:.2f}, kinetic energy = {kinetic_energy:.2f}, potential energy = {potential_energy:.2f}",
+            f"total energy = {kinetic_energy + potential_energy:.2f}",
             True,
             "black",
             "white",
